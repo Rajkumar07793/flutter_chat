@@ -130,9 +130,17 @@ class _ChatScreenState extends State<ChatScreen> {
     socket.connect();
     socket.onConnect((_) {
       print('connect');
-      socket.emit('msg', 'test');
+      socket.emit('joinRoom', [
+        {
+          {'roomId': '123'}
+        }
+      ]);
     });
-    socket.on('event', (data) => print(data));
+    socket.on('newChatMessage', (data) {
+      setState(() {
+        messages.add(data);
+      });
+    });
     socket.onDisconnect((_) => print('disconnect'));
     socket.on('fromServer', (_) => print(_));
   }
