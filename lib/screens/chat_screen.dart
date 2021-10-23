@@ -16,7 +16,7 @@ class _ChatScreenState extends State<ChatScreen> {
   static const String mySocketUrl2 = "https://api.rybitt.com/";
   static const String demoSocketUrl =
       "https://socketio-chat-h9jt.herokuapp.com";
-  IO.Socket socket = IO.io(mySocketUrl2);
+  IO.Socket socket = IO.io(mySocketUrl);
   List<MessageData> messages = [
     MessageData(roomId: "123", message: "Hi", senderId: "ck", isMe: false),
     MessageData(
@@ -34,6 +34,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
         title: const Text("Chat by socket"),
@@ -59,6 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         : MainAxisAlignment.start,
                     children: [
                       Container(
+                        constraints: BoxConstraints(maxWidth: width * 0.7),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 5),
                         margin: const EdgeInsets.symmetric(vertical: 5),
