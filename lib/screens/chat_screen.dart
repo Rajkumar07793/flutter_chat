@@ -12,7 +12,17 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+<<<<<<< HEAD
   IO.Socket? socket;
+=======
+  static const String liveSocketUrl = "http://40.119.162.62:3000";
+  static const String mySocketUrl = "http://localhost:4000";
+  static const String mySocketUrl1 = "http://localhost:3000";
+  static const String mySocketUrl2 = "https://api.rybitt.com/";
+  static const String demoSocketUrl =
+      "https://socketio-chat-h9jt.herokuapp.com";
+  IO.Socket socket = IO.io(mySocketUrl);
+>>>>>>> 1dc2b032ed1906a64e95906fd8a5eede2d061580
   List<MessageData> messages = [
     MessageData(
         socketId: "ck",
