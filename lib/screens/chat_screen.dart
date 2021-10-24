@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter_chat/Globals/app_constants.dart';
 import 'package:flutter_chat/models/message_data.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
@@ -10,37 +12,62 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  static const String liveSocketUrl = "http://40.119.162.62:3000";
-  static const String mySocketUrl = "http://localhost:4000";
-  static const String mySocketUrl1 = "http://localhost:3000";
-  static const String mySocketUrl2 = "https://api.rybitt.com/";
-  static const String demoSocketUrl =
-      "https://socketio-chat-h9jt.herokuapp.com";
-  IO.Socket socket = IO.io(mySocketUrl2);
+  IO.Socket? socket;
   List<MessageData> messages = [
-    MessageData(roomId: "123", message: "Hi", senderId: "ck", isMe: false),
     MessageData(
+        socketId: "ck",
+        roomId: "123",
+        message: "Hi",
+        senderId: "ck",
+        isMe: false),
+    MessageData(
+        socketId: "ck",
         roomId: "123",
         message: "This is luke sky walker from US",
         senderId: "ck",
         isMe: false),
   ];
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _socketUrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool isMe = true;
   @override
   void initState() {
+    scrollToBottom();
     socketConfig();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Chat by socket"),
+        title: TextField(
+          controller: _socketUrl,
+          decoration: const InputDecoration(
+              hintText: "Enter Socket Url", border: InputBorder.none),
+          onSubmitted: (value) {
+            socket = IO.io(
+                value,
+                IO.OptionBuilder()
+                    .setTransports(['websocket'])
+                    .disableAutoConnect()
+                    .build());
+            socket!.connect();
+          },
+        ),
         actions: [
+          Switch(
+              value: isMe,
+              onChanged: (value) {
+                setState(() {
+                  isMe = value;
+                });
+              }),
           IconButton(
               onPressed: () {
-                socket.connect();
+                socket!.connected ? socket!.disconnect() : socket!.connect();
               },
               icon: const Icon(Icons.power_settings_new_rounded))
         ],
@@ -51,6 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Expanded(
               child: ListView.builder(
+                controller: _scrollController,
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
                   return Row(
@@ -59,6 +87,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         : MainAxisAlignment.start,
                     children: [
                       Container(
+                        constraints: BoxConstraints(maxWidth: width * 0.7),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 5),
                         margin: const EdgeInsets.symmetric(vertical: 5),
@@ -105,15 +134,18 @@ class _ChatScreenState extends State<ChatScreen> {
                       onPressed: () {
                         if (_messageController.text.isNotEmpty) {
                           final message = MessageData(
+                              socketId: socket!.id,
                               roomId: "123",
                               message: _messageController.text,
                               senderId: "rk",
-                              isMe: true);
+                              isMe: isMe);
                           setState(() {
                             messages.add(message);
                             _messageController.clear();
                           });
-                          socket.emit("newChatMessage", [message]);
+                          socket!.emit(
+                              "newChatMessage", message.toJSONEncodable());
+                          scrollToBottom();
                         }
                       },
                       icon: const Icon(Icons.send)),
@@ -127,21 +159,44 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void socketConfig() {
-    socket.connect();
-    socket.onConnect((_) {
-      print('connect');
-      socket.emit('joinRoom', [
-        {
-          {'roomId': '123'}
-        }
-      ]);
+    socket = IO.io(
+        Constants.mySocketUrl1,
+        IO.OptionBuilder()
+            .setTransports(['websocket'])
+            .disableAutoConnect()
+            .build());
+    socket!.connect();
+    socket!.on('connect', (data) {
+      print('Connected to Server');
     });
-    socket.on('newChatMessage', (data) {
-      setState(() {
-        messages.add(data);
+    socket!.onConnect((_) {
+      print('connect');
+      socket!.emit('joinRoom', {
+        {'roomId': '123'}
       });
     });
-    socket.onDisconnect((_) => print('disconnect'));
-    socket.on('fromServer', (_) => print(_));
+    socket!.on('newChatMessage', (data) {
+      print(data);
+      setState(() {
+        if (socket!.id != data['socketId']) {
+          messages.add(MessageData.fromJson(data));
+        }
+      });
+      scrollToBottom();
+    });
+    socket!.onDisconnect((_) => print('disconnect'));
+    socket!.on('fromServer', (_) => print(_));
+    socket!.onConnectError((data) => print('error: $data'));
+    socket!.onError((data) => print('error: $data'));
+  }
+
+  void scrollToBottom() async {
+    // _scrollController.position.maxScrollExtent;
+    await Future.delayed(const Duration(milliseconds: 1));
+    SchedulerBinding.instance?.addPostFrameCallback((_) {
+      _scrollController.animateTo(_scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.fastOutSlowIn);
+    });
   }
 }
